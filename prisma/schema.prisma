@@ -1,0 +1,173 @@
+// Local development schema using SQLite for zero-config testing
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         String    @default("STUDENT") // ADMIN or STUDENT
+  createdAt    DateTime  @default(now())
+  student      Student?
+}
+
+model Student {
+  id           String               @id @default(cuid())
+  userId       String               @unique
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matricNo     String               @unique
+  fullName     String
+  email        String               @unique
+  passportUrl           String?
+  signatureUrl          String?
+  facultyId             String
+  faculty               Faculty              @relation(fields: [facultyId], references: [id])
+  departmentId          String
+  department            Department           @relation(fields: [departmentId], references: [id])
+  level                 Int                  @default(100) // 100, 200, 300, 400, 500
+  gender                String               @default("Male")
+  phone                 String?
+  address               String?
+  state                 String?
+  lga                   String?
+  maritalStatus         String?              @default("Single")
+  tribe                 String?
+  religion              String?
+  placeOfBirth          String?
+  nextOfKinName         String?
+  nextOfKinRelationship String?
+  nextOfKinAddress      String?
+  nextOfKinPhone        String?
+  nextOfKinEmail        String?
+  status                String               @default("ACTIVE") // ACTIVE, PROBATION, GRADUATED
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  courses               CourseRegistration[]
+
+  @@index([departmentId])
+  @@index([level])
+}
+
+model Faculty {
+  id          String       @id @default(cuid())
+  name        String
+  code        String       @unique
+  departments Department[]
+  students    Student[]
+}
+
+model Department {
+  id        String       @id @default(cuid())
+  name      String
+  code      String       @unique
+  facultyId String
+  faculty   Faculty      @relation(fields: [facultyId], references: [id])
+  courses   Course[]
+  students  Student[]
+
+  @@index([facultyId])
+}
+
+model Course {
+  id            String               @id @default(cuid())
+  departmentId  String
+  department    Department           @relation(fields: [departmentId], references: [id])
+  code          String               @unique // e.g., CPE211, CSC301
+  title         String
+  unit          Int                  @default(3) // 1-6 credit units
+  level         Int                  @default(100)
+  semester      String               @default("FIRST") // FIRST or SECOND
+  registrations CourseRegistration[]
+
+  @@index([departmentId, level, semester])
+}
+
+model AcademicSession {
+  id            String               @id @default(cuid())
+  name          String               @unique // e.g., 2024/2025
+  isCurrent     Boolean              @default(false)
+  semesters     Semester[]
+  registrations CourseRegistration[]
+  calendarEvents CalendarEvent[]
+}
+
+model Semester {
+  id                String               @id @default(cuid())
+  name              String               // FIRST or SECOND
+  sessionId         String
+  session           AcademicSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  isCurrent         Boolean              @default(false)
+  registrationOpen  Boolean              @default(true)
+  resultsPublished  Boolean              @default(false)
+  registrations     CourseRegistration[]
+  calendarEvents    CalendarEvent[]
+
+  @@unique([sessionId, name])
+}
+
+model CourseRegistration {
+  id           String          @id @default(cuid())
+  studentId    String
+  student      Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId     String
+  course       Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  sessionId    String
+  session      AcademicSession @relation(fields: [sessionId], references: [id])
+  semesterId   String
+  semester     Semester        @relation(fields: [semesterId], references: [id])
+  registeredAt DateTime        @default(now())
+  score        Score?
+
+  @@unique([studentId, courseId, sessionId, semesterId])
+  @@index([courseId])
+  @@index([sessionId, semesterId])
+}
+
+model Score {
+  id             String             @id @default(cuid())
+  registrationId String             @unique
+  registration   CourseRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  caScore        Float              @default(0) // 0 - 40
+  examScore      Float              @default(0) // 0 - 60
+  totalScore     Float              @default(0) // 0 - 100
+  grade          String             @default("F") // A, B, C, D, E, F
+  gradePoint     Int                @default(0) // 5, 4, 3, 2, 1, 0
+  updatedAt      DateTime           @updatedAt
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  adminId   String?
+  action    String
+  details   String
+  timestamp DateTime @default(now())
+}
+
+model CalendarEvent {
+  id          String          @id @default(cuid())
+  sessionId   String
+  session     AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  semesterId  String?
+  semester    Semester?       @relation(fields: [semesterId], references: [id], onDelete: Cascade)
+  dateRange   String          // e.g. "Oct 14 – Oct 19, 2024"
+  week        String          // e.g. "Week 1", "Week 2", "Mid-Term", "Senate"
+  title       String
+  description String
+  category    String          @default("ACADEMIC") // REGISTRATION, ACADEMIC, ASSESSMENT, EXAMINATION, SENATE
+  status      String          @default("UPCOMING") // COMPLETED, IN_PROGRESS, UPCOMING
+  unit        String          @default("Academic Registry")
+  order       Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([sessionId])
+  @@index([semesterId])
+}

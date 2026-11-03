@@ -1,0 +1,19 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Next.js and Node build artifacts
+.next/
+node_modules/
+out/
+build/
+*.tsbuildinfo
+
+# Local database and uploaded user files
+prisma/dev.db
+public/uploads/
+
+# OS and editor files
+.DS_Store
+*.swp

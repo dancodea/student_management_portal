@@ -1,0 +1,137 @@
+// Production schema for AWS RDS MySQL deployment
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         String    @default("STUDENT") // ADMIN or STUDENT
+  createdAt    DateTime  @default(now())
+  student      Student?
+}
+
+model Student {
+  id           String               @id @default(cuid())
+  userId       String               @unique
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matricNo     String               @unique
+  fullName     String
+  email        String               @unique
+  passportUrl  String?
+  facultyId    String
+  faculty      Faculty              @relation(fields: [facultyId], references: [id])
+  departmentId String
+  department   Department           @relation(fields: [departmentId], references: [id])
+  level        Int                  @default(100)
+  gender       String               @default("Male")
+  phone        String?
+  status       String               @default("ACTIVE")
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  courses      CourseRegistration[]
+
+  @@index([departmentId])
+  @@index([level])
+}
+
+model Faculty {
+  id          String       @id @default(cuid())
+  name        String
+  code        String       @unique
+  departments Department[]
+  students    Student[]
+}
+
+model Department {
+  id        String       @id @default(cuid())
+  name      String
+  code      String       @unique
+  facultyId String
+  faculty   Faculty      @relation(fields: [facultyId], references: [id])
+  courses   Course[]
+  students  Student[]
+
+  @@index([facultyId])
+}
+
+model Course {
+  id            String               @id @default(cuid())
+  departmentId  String
+  department    Department           @relation(fields: [departmentId], references: [id])
+  code          String               @unique
+  title         String
+  unit          Int                  @default(3)
+  level         Int                  @default(100)
+  semester      String               @default("FIRST")
+  registrations CourseRegistration[]
+
+  @@index([departmentId, level, semester])
+}
+
+model AcademicSession {
+  id            String               @id @default(cuid())
+  name          String               @unique
+  isCurrent     Boolean              @default(false)
+  semesters     Semester[]
+  registrations CourseRegistration[]
+}
+
+model Semester {
+  id                String               @id @default(cuid())
+  name              String
+  sessionId         String
+  session           AcademicSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  isCurrent         Boolean              @default(false)
+  registrationOpen  Boolean              @default(true)
+  resultsPublished  Boolean              @default(false)
+  registrations     CourseRegistration[]
+
+  @@unique([sessionId, name])
+}
+
+model CourseRegistration {
+  id           String          @id @default(cuid())
+  studentId    String
+  student      Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId     String
+  course       Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  sessionId    String
+  session      AcademicSession @relation(fields: [sessionId], references: [id])
+  semesterId   String
+  semester     Semester        @relation(fields: [semesterId], references: [id])
+  registeredAt DateTime        @default(now())
+  score        Score?
+
+  @@unique([studentId, courseId, sessionId, semesterId])
+  @@index([courseId])
+  @@index([sessionId, semesterId])
+}
+
+model Score {
+  id             String             @id @default(cuid())
+  registrationId String             @unique
+  registration   CourseRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  caScore        Float              @default(0)
+  examScore      Float              @default(0)
+  totalScore     Float              @default(0)
+  grade          String             @default("F")
+  gradePoint     Int                @default(0)
+  updatedAt      DateTime           @updatedAt
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  adminId   String?
+  action    String
+  details   String
+  timestamp DateTime @default(now())
+}
