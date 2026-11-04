@@ -14,6 +14,8 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Keep the runtime copy valid even when this project has no committed public assets yet.
+RUN mkdir -p public
 
 # The deployed app uses the MySQL schema. The placeholder is only for Prisma's
 # schema validation during image build; the real DATABASE_URL is supplied at run time.
