@@ -151,19 +151,20 @@ npm run dev
    ```bash
    ssh -i your-key.pem ec2-user@<EC2-PUBLIC-IP>
    ```
-2. Clone or transfer the `unified-school-portal` project to `/var/www/unified-school-portal`:
-3. Configure `.env` on EC2:
+2. Clone or transfer the project to the EC2 host.
+3. Create the protected runtime environment file at `/etc/unified-school-portal.env`:
    ```env
-   DATABASE_URL="mysql://admin:your_strong_password@groupb-student-db.cotg0g886gp1.us-east-1.rds.amazonaws.com:3306/school_portal_db"
-   JWT_SECRET="generate-a-strong-secret-key-321"
+   DATABASE_URL="mysql://<RDS_USER>:<URL_ENCODED_PASSWORD>@<RDS_ENDPOINT>:3306/<DATABASE_NAME>"
+   JWT_SECRET="<long-random-secret>"
    AWS_REGION="us-east-1"
-   AWS_S3_BUCKET="futminna-student-passports-prod"
-   AWS_ACCESS_KEY_ID="AKIAxxxxxxxxxxxxxxxx"
-   AWS_SECRET_ACCESS_KEY="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   AWS_S3_BUCKET="<S3_BUCKET>"
    ```
-4. Run the automated deployment script:
+   Protect it with `sudo chown root:root /etc/unified-school-portal.env && sudo chmod 600 /etc/unified-school-portal.env`. Attach an EC2 instance profile granting access to the S3 bucket; do not put AWS access keys on the instance.
+4. Initialize an empty RDS database once, after confirming the endpoint and backup:
    ```bash
-   chmod +x deploy.sh
-   ./deploy.sh
+   npx prisma db push --schema=prisma/schema.mysql.prisma
    ```
-5. Visit your EC2 Public IP or DNS address in your browser (`http://<EC2-PUBLIC-IP>/`).
+   This creates the schema; it does not transfer the existing local SQLite data. Plan and verify that data migration separately before using production.
+5. From the checked out project directory, run `chmod +x deploy.sh && ./deploy.sh`. The app listens on port 3000 for an ALB target group. Allow inbound 3000 on the EC2 security group only from the ALB security group; do not expose it to the internet. Configure the ALB health check path as `/api/health`.
+
+The Docker image uses the MySQL Prisma schema and Next.js standalone output. Deployment no longer seeds demo accounts or changes the database schema automatically. See `deploy.sh` for the host prerequisites.

@@ -2,7 +2,11 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-futminna-2026';
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET must be configured.');
+  return secret;
+}
 export const COOKIE_NAME = 'school_portal_token';
 
 export interface TokenPayload {
@@ -24,12 +28,12 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 export function signToken(payload: TokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: '7d' });
 }
 
 export function verifyToken(token: string): TokenPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as TokenPayload;
+    return jwt.verify(token, getJwtSecret()) as TokenPayload;
   } catch {
     return null;
   }

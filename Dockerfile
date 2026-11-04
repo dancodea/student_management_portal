@@ -7,7 +7,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm ci --include=dev
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -15,8 +15,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma Client
-RUN npx prisma generate
+# The deployed app uses the MySQL schema. The placeholder is only for Prisma's
+# schema validation during image build; the real DATABASE_URL is supplied at run time.
+ENV DATABASE_URL="mysql://build:build@127.0.0.1:3306/build"
+RUN npx prisma generate --schema=prisma/schema.mysql.prisma
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production

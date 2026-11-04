@@ -8,18 +8,18 @@ const bucket = process.env.AWS_S3_BUCKET || '';
 const accessKeyId = process.env.AWS_ACCESS_KEY_ID || '';
 const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY || '';
 
-export const isS3Configured = Boolean(bucket && accessKeyId && secretAccessKey);
+// In AWS, prefer the EC2 instance profile credential chain. Static credentials
+// remain available for local development when both values are supplied.
+export const isS3Configured = Boolean(bucket);
 
-let s3Client: S3Client | null = null;
-if (isS3Configured) {
-  s3Client = new S3Client({
-    region,
-    credentials: {
-      accessKeyId,
-      secretAccessKey,
-    },
-  });
-}
+const s3Client: S3Client | null = isS3Configured
+  ? new S3Client({
+      region,
+      ...(accessKeyId && secretAccessKey
+        ? { credentials: { accessKeyId, secretAccessKey } }
+        : {}),
+    })
+  : null;
 
 /**
  * Uploads a buffer either to Amazon S3 (if configured) or to the local public/uploads directory.
